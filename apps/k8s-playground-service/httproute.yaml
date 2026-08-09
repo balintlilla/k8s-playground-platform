@@ -9,10 +9,12 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "30"
 spec:
+  hostnames:
+    - app.k8s-playground.test
   parentRefs:
     - name: k8s-playground-gateway
       namespace: istio-system
-      sectionName: http
+      sectionName: https
   rules:
     - matches:
         - path:
