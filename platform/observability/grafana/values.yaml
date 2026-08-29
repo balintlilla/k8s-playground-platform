@@ -245,6 +245,28 @@ postgresql:
     certCAFilename: ca.crt
 
   primary:
+    customLivenessProbe:
+      exec:
+        command:
+          - /bin/sh
+          - -ec
+          - exec pg_isready -h /tmp -U grafana -d grafana -p 5432
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 6
+      successThreshold: 1
+    customReadinessProbe:
+      exec:
+        command:
+          - /bin/sh
+          - -ec
+          - exec pg_isready -h /tmp -U grafana -d grafana -p 5432
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 6
+      successThreshold: 1
     persistence:
       enabled: true
       storageClass: standard

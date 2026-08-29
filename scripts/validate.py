@@ -1487,6 +1487,16 @@ def validate_grafana_postgresql(case: unittest.TestCase, docs: list[dict[str, An
         and dig(pod_spec, "automountServiceAccountToken") is False,
         "PostgreSQL workload security is incomplete",
     )
+    expected_probe = [
+        "/bin/sh",
+        "-ec",
+        "exec pg_isready -h /tmp -U grafana -d grafana -p 5432",
+    ]
+    case.assertTrue(
+        dig(container, "livenessProbe", "exec", "command") == expected_probe
+        and dig(container, "readinessProbe", "exec", "command") == expected_probe,
+        "PostgreSQL health probes must use the local socket without certificate authentication noise",
+    )
     case.assertTrue(
         dig(password_volume, "secret", "secretName") == "grafana-postgresql-credentials"
         and dig(tls_volume, "secret", "secretName") == "grafana-postgresql-tls"
