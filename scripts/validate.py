@@ -1425,6 +1425,103 @@ def strict_json_loads(content: str) -> Any:
     return json.loads(content, parse_constant=reject_constant)
 
 
+def validate_grafana_postgresql(case: unittest.TestCase, docs: list[dict[str, Any]]) -> None:
+    statefulset = resource(case, docs, "StatefulSet", "grafana-postgresql")
+    service = resource(case, docs, "Service", "grafana-postgresql")
+    network_policy = resource(case, docs, "NetworkPolicy", "grafana-postgresql")
+    certificate = resource(case, docs, "Certificate", "grafana-postgresql")
+    pod_spec = dig(statefulset, "spec", "template", "spec")
+    container = named(case, dig(pod_spec, "containers"), "postgresql", "PostgreSQL container is missing")
+    password_volume = named(
+        case,
+        dig(pod_spec, "volumes"),
+        "postgresql-password",
+        "PostgreSQL credentials volume is missing",
+    )
+    tls_volume = named(
+        case,
+        dig(pod_spec, "volumes"),
+        "raw-certificates",
+        "PostgreSQL TLS volume is missing",
+    )
+    env = {
+        entry.get("name"): entry.get("value")
+        for entry in container.get("env", [])
+        if isinstance(entry, dict) and entry.get("name")
+    }
+    claims = dig(statefulset, "spec", "volumeClaimTemplates")
+    case.assertIsInstance(claims, list, "PostgreSQL volume claim template is missing")
+    case.assertEqual(len(claims), 1, "PostgreSQL must have one data volume claim")
+    claim = claims[0]
+    service_port = named(case, dig(service, "spec", "ports"), "tcp-postgresql", "PostgreSQL port is missing")
+    case.assertTrue(
+        service_port.get("port") == 5432
+        and service_port.get("targetPort") == "tcp-postgresql"
+        and dig(service, "spec", "type") == "ClusterIP",
+        "PostgreSQL must remain an internal ClusterIP on port 5432",
+    )
+    case.assertEqual(
+        container.get("image"),
+        "registry-1.docker.io/bitnami/postgresql@sha256:40a261ed77f3b8dc65eeeec98bb79c4d3ef3410d7e2af7cfcf3785a6af00e4c5",
+        "PostgreSQL image must use the pinned digest",
+    )
+    case.assertTrue(
+        dig(container, "securityContext", "runAsUser") == 1001
+        and dig(container, "securityContext", "runAsGroup") == 1001
+        and dig(container, "securityContext", "runAsNonRoot") is True
+        and dig(container, "securityContext", "readOnlyRootFilesystem") is True
+        and dig(container, "securityContext", "allowPrivilegeEscalation") is False
+        and dig(container, "securityContext", "capabilities", "drop") == ["ALL"]
+        and dig(container, "securityContext", "seccompProfile", "type") == "RuntimeDefault"
+        and dig(pod_spec, "automountServiceAccountToken") is False,
+        "PostgreSQL workload security is incomplete",
+    )
+    case.assertTrue(
+        dig(password_volume, "secret", "secretName") == "grafana-postgresql-credentials"
+        and dig(tls_volume, "secret", "secretName") == "grafana-postgresql-tls"
+        and env.get("POSTGRES_USER") == "grafana"
+        and env.get("POSTGRES_DATABASE") == "grafana"
+        and env.get("POSTGRES_PASSWORD_FILE") == "/opt/bitnami/postgresql/secrets/password"
+        and env.get("POSTGRESQL_ENABLE_TLS") == "yes"
+        and env.get("POSTGRESQL_TLS_CA_FILE") == "/opt/bitnami/postgresql/certs/ca.crt",
+        "PostgreSQL must use the dedicated Grafana database, credentials, and mutual TLS",
+    )
+    case.assertTrue(
+        dig(claim, "spec", "storageClassName") == "standard"
+        and dig(claim, "spec", "accessModes") == ["ReadWriteOnce"]
+        and dig(claim, "spec", "resources", "requests", "storage") == "5Gi"
+        and dig(statefulset, "spec", "persistentVolumeClaimRetentionPolicy")
+        == {"whenDeleted": "Retain", "whenScaled": "Retain"},
+        "PostgreSQL must use retained 5Gi persistent storage",
+    )
+    case.assertEqual(
+        dig(statefulset, "metadata", "annotations", "argocd.argoproj.io/sync-wave"),
+        "-1",
+        "PostgreSQL must become healthy before Grafana resources sync",
+    )
+    ingress = dig(network_policy, "spec", "ingress") or []
+    case.assertTrue(
+        any(
+            dig(source, "podSelector", "matchLabels", "grafana-postgresql-client") == "true"
+            for rule in ingress
+            for source in rule.get("from", [])
+        ),
+        "PostgreSQL NetworkPolicy must allow only labelled Grafana clients",
+    )
+    case.assertTrue(
+        dig(certificate, "spec", "secretName") == "grafana-postgresql-tls"
+        and "grafana-postgresql.observability.svc.cluster.local" in dig(certificate, "spec", "dnsNames")
+        and dig(certificate, "spec", "usages") == ["server auth"]
+        and dig(certificate, "spec", "privateKey", "rotationPolicy") == "Always",
+        "PostgreSQL server certificate rotation is not configured",
+    )
+    case.assertEqual(
+        dig(certificate, "metadata", "annotations", "argocd.argoproj.io/sync-wave"),
+        "-2",
+        "PostgreSQL certificates must be ready before the database syncs",
+    )
+
+
 def validate_grafana(case: unittest.TestCase, harness: Harness) -> None:
     allowed = {
         "fixed",
@@ -1467,9 +1564,67 @@ def validate_grafana(case: unittest.TestCase, harness: Harness) -> None:
         "observability",
         lint=True,
     )
+    validate_grafana_postgresql(case, docs)
     service = resource(case, docs, "Service", "grafana")
     grafana_config = resource(case, docs, "ConfigMap", "grafana")
+    deployment = resource(case, docs, "Deployment", "grafana")
+    client_certificate = resource(case, docs, "Certificate", "grafana-postgresql-client")
     case.assertEqual(dig(service, "spec", "type"), "ClusterIP", "Grafana Service is not a ClusterIP")
+    pod_spec = dig(deployment, "spec", "template", "spec")
+    grafana_container = named(case, dig(pod_spec, "containers"), "grafana", "Grafana container is missing")
+    database_password = named(
+        case,
+        grafana_container.get("env"),
+        "GF_DATABASE_PASSWORD",
+        "Grafana PostgreSQL password environment variable is missing",
+    )
+    database_mount = named(
+        case,
+        grafana_container.get("volumeMounts"),
+        "grafana-postgresql-client-tls",
+        "Grafana PostgreSQL client certificate mount is missing",
+    )
+    database_volume = named(
+        case,
+        dig(pod_spec, "volumes"),
+        "grafana-postgresql-client-tls",
+        "Grafana PostgreSQL client certificate volume is missing",
+    )
+    storage_volume = named(case, dig(pod_spec, "volumes"), "storage", "Grafana storage volume is missing")
+    grafana_ini = dig(grafana_config, "data", "grafana.ini")
+    case.assertTrue(
+        dig(database_password, "valueFrom", "secretKeyRef")
+        == {"name": "grafana-postgresql-credentials", "key": "password"}
+        and database_mount.get("mountPath") == "/etc/grafana/postgresql"
+        and database_mount.get("readOnly") is True
+        and dig(database_volume, "secret", "secretName") == "grafana-postgresql-client-tls"
+        and dig(database_volume, "secret", "defaultMode") == 0o440,
+        "Grafana must consume its PostgreSQL password and client identity from Secrets",
+    )
+    case.assertTrue(
+        isinstance(grafana_ini, str)
+        and "type = postgres" in grafana_ini
+        and "host = grafana-postgresql.observability.svc.cluster.local:5432" in grafana_ini
+        and "password = $__env{GF_DATABASE_PASSWORD}" in grafana_ini
+        and "ssl_mode = verify-full" in grafana_ini
+        and "ca_cert_path = /etc/grafana/postgresql/ca.crt" in grafana_ini
+        and "client_cert_path = /etc/grafana/postgresql/tls.crt" in grafana_ini
+        and "client_key_path = /etc/grafana/postgresql/tls.key" in grafana_ini,
+        "Grafana must use mutually authenticated PostgreSQL instead of SQLite",
+    )
+    case.assertEqual(
+        dig(storage_volume, "persistentVolumeClaim", "claimName"),
+        "grafana",
+        "The existing Grafana PVC must remain mounted during the clean PostgreSQL cutover",
+    )
+    case.assertTrue(
+        dig(client_certificate, "spec", "secretName") == "grafana-postgresql-client-tls"
+        and dig(client_certificate, "spec", "commonName") == "grafana"
+        and dig(client_certificate, "spec", "usages") == ["client auth"]
+        and dig(client_certificate, "spec", "privateKey", "rotationPolicy") == "Always"
+        and dig(client_certificate, "metadata", "annotations", "argocd.argoproj.io/sync-wave") == "-2",
+        "Grafana PostgreSQL client certificate rotation is not configured",
+    )
     datasource_content = dig(grafana_config, "data", "datasources.yaml")
     case.assertIsInstance(datasource_content, str, "Grafana datasource provisioning is missing")
     datasource_config = yaml.safe_load(datasource_content)

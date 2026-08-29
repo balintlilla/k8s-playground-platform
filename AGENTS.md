@@ -28,6 +28,8 @@ Current wrapper chart paths:
 - `platform/observability/tempo`
 - `platform/observability/loki`
 
+The Grafana wrapper is intentionally an umbrella chart: its wrapper version follows the primary Grafana dependency, while the dedicated PostgreSQL dependency is pinned independently in the same `Chart.yaml`. This keeps Grafana and its database in one Argo `Application` so resource-level sync waves can enforce database readiness before Grafana starts.
+
 Keep wrapper chart `version` aligned with the upstream dependency version to avoid a separate local versioning scheme. For example, Istio wrappers use `version: 1.30.2` when their dependency chart version is `1.30.2`. Cert-manager uses wrapper `version: 1.21.0` while the dependency uses Jetstack's `v1.21.0` chart version.
 
 Commit `Chart.lock` files. They preserve dependency digests for reproducibility.

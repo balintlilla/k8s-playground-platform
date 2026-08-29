@@ -57,3 +57,16 @@ stringData:
   name: grafana-community
   type: helm
   url: https://grafana-community.github.io/helm-charts
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-repo-helm-bitnami
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: bitnami
+  type: helm
+  url: registry-1.docker.io/bitnamicharts
+  enableOCI: "true"

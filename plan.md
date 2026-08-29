@@ -115,6 +115,8 @@ Build a serious local Kubernetes playground that uses mature, well-tested Istio 
 - Replaced inline Ruby manifest assertions with a locked Python/PyYAML uv validation suite while preserving targeted mise task names and native component validators. Wrapper validation now stages charts and consumes committed dependency locks without modifying source charts. The hosts-file manager and its safety tests also moved to Python, removing Ruby as a repository dependency.
 - Added and live-verified the desired-state Alloy trace pipeline with dedicated batching, bounded non-blocking retries, native mTLS export through the authenticated Tempo gateway, exact application identity authorization, and single-span delivery without cross-tenant visibility. Application trace export is live-verified across both replicas with caller context preservation, `200` and `404` status attributes, positive timing, no duplicate spans, no private query or baggage values, and no `/healthz` telemetry.
 - Provisioned and live-verified Grafana's Tempo datasource with tenant-scoped internal queries and Mimir `trace_id` exemplar links. Grafana TraceQL search returned application traces with matching timing, status, and span identity; Mimir produced exemplars for both replicas and both validated HTTP statuses; traces remained queryable across Tempo pod replacement with objects present in MinIO; and post-restart ingestion recovered normally.
+- Installed and live-verified Loki with direct node-local Kubernetes stdout/stderr collection through Alloy, authenticated tenant-controlled ingestion, Grafana log/trace correlation, and retained object-backed storage.
+- Decided to move Grafana to a fresh dedicated PostgreSQL database without migrating SQLite metadata. Keep PostgreSQL in the existing Grafana wrapper and Argo Application so resource-level sync waves enforce database readiness, leave the existing Grafana PVC mounted and untouched for the initial cutover, recreate Git-provisioned configuration in the blank database, and remove obsolete SQLite storage only in a later explicit cleanup.
 
 Current local cluster tasks:
 
@@ -179,6 +181,8 @@ Current local Grafana tasks:
 
 ```sh
 mise run grafana:bootstrap-secrets
+mise run grafana-postgresql:bootstrap-secrets
+mise run grafana-postgresql:status
 mise run grafana:admin-password
 mise run grafana:status
 ```
@@ -189,6 +193,8 @@ Current local bootstrap Secret tasks:
 mise run minio:bootstrap-secrets
 mise run mimir:bootstrap-secrets
 mise run tempo:bootstrap-secrets
+mise run loki:bootstrap-secrets
+mise run grafana-postgresql:bootstrap-secrets
 mise run grafana:bootstrap-secrets
 ```
 
@@ -650,7 +656,7 @@ Recommended sequence:
 - Install Tempo after the metrics path is working and route application traces from the existing Alloy DaemonSet to Tempo.
 - Provision the Tempo Grafana datasource and validate single-service trace search, timing, status, and metric exemplars before expanding the application topology.
 - Install Loki and configure Alloy to read Kubernetes stdout/stderr directly.
-- Start the single-replica kind deployment with Grafana's SQLite database on a PVC, then migrate Grafana metadata to PostgreSQL before enabling multiple replicas or treating the deployment as highly available. Use a dedicated database and database user rather than sharing an application schema.
+- Start the single-replica kind deployment with Grafana's SQLite database on a PVC, then perform a clean cutover to a fresh PostgreSQL database before enabling multiple replicas or treating the deployment as highly available. Do not migrate disposable local metadata; recreate Git-provisioned configuration and use a dedicated database and database user.
 - Add Keycloak in a later identity-focused phase as a local OAuth 2.0/OIDC provider, then migrate Grafana human login from local accounts to generic OAuth/OIDC with explicit group or claim-to-role mapping. Keep a controlled local administrator account for break-glass access.
 - Install Pyroscope for profiling data.
 - Evaluate Beyla for eBPF-derived service telemetry and profiling-adjacent signals without requiring immediate app code changes.
@@ -943,8 +949,8 @@ k8s-playground-argocd-apps/
 - [x] Configure Alloy's application OTLP traces pipeline to route through the native-TLS Tempo ingest boundary without duplicate telemetry.
 - [x] Enable application OTLP trace export and validate single-service traces after Tempo and the Alloy trace pipeline are ready.
 - [x] Provision Grafana's Tempo datasource and validate single-service trace search, timing, status, persistence, and metric-to-trace exemplars.
-- [ ] Install Loki and configure Alloy to collect Kubernetes stdout/stderr logs directly rather than via OTLP logs.
-- [ ] Migrate Grafana from SQLite on a local PVC to PostgreSQL before adding replicas or claiming production-style high availability.
+- [x] Install Loki and configure Alloy to collect Kubernetes stdout/stderr logs directly rather than via OTLP logs.
+- [ ] Cut Grafana over from SQLite on a local PVC to a fresh PostgreSQL database before adding replicas or claiming production-style high availability; do not migrate disposable local metadata.
 - [ ] Install Keycloak in a later identity-learning phase and integrate Grafana through generic OAuth/OIDC with explicit role mapping and a tested break-glass login path.
 - [ ] Install Pyroscope for profiling.
 - [ ] Evaluate and, if useful, install Beyla for eBPF-derived telemetry.
@@ -1017,6 +1023,7 @@ k8s-playground-argocd-apps/
 - On fresh kind cluster creation, all roots and child Applications reconcile independently and eventually become healthy before validation traffic is generated; no parent wave claims child readiness ordering.
 - During an observability outage, the application remains healthy and Alloy retries/buffers exports without making application requests depend on telemetry delivery.
 - Grafana is reachable through the dedicated Istio management Gateway and requires authentication.
+- Grafana uses its dedicated PostgreSQL database over mutually authenticated TLS; Git-provisioned datasources and dashboards are recreated without importing SQLite metadata.
 - Grafana datasources are provisioned declaratively for installed backends.
 - Loki receives Kubernetes container stdout/stderr logs collected directly by Alloy.
 - Pyroscope is available for profiling data.

@@ -2,5 +2,8 @@ dependencies:
 - name: grafana
   repository: https://grafana.github.io/helm-charts
   version: 10.5.15
-digest: sha256:3fd0080197abb0a1968d174ead7180f962c939cab8037f1b8ead6dd3adfa7490
-generated: "2026-08-05T23:00:18.379717332-04:00"
+- name: postgresql
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 18.8.13
+digest: sha256:3ddbd5b1cc48675ddc0c1005a7f8d4a9e6985f474d51d9867710054449b6c486
+generated: "2026-08-29T00:44:23.458488689-04:00"

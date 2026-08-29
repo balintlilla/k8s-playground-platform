@@ -152,6 +152,7 @@ mise run minio:bootstrap-secrets --name {{ usage.name }}
 mise run mimir:bootstrap-secrets --name {{ usage.name }}
 mise run tempo:bootstrap-secrets --name {{ usage.name }}
 mise run loki:bootstrap-secrets --name {{ usage.name }}
+mise run grafana-postgresql:bootstrap-secrets --name {{ usage.name }}
 mise run grafana:bootstrap-secrets --name {{ usage.name }}
 mise run argocd:bootstrap-roots --name {{ usage.name }}
 mise run istio:wait --name {{ usage.name }}
@@ -336,6 +337,37 @@ kubectl --context kind-{{ usage.name }} -n {{ usage.namespace }} create secret g
   --from-literal=admin-user='{{ usage.admin_user }}' \
   --from-literal=admin-password="$password" \
   --dry-run=client -o yaml | kubectl --context kind-{{ usage.name }} apply -f -
+'''
+
+[tasks."grafana-postgresql:bootstrap-secrets"]
+description = "Create the local-only Grafana PostgreSQL password before Argo sync"
+usage = '''
+flag "--name <name>" help="kind cluster name" default="k8s-playground"
+flag "--namespace <namespace>" help="PostgreSQL namespace" default="observability"
+flag "--secret <secret>" help="PostgreSQL credentials Secret name" default="grafana-postgresql-credentials"
+'''
+run = '''
+kubectl --context kind-{{ usage.name }} create namespace {{ usage.namespace }} --dry-run=client -o yaml | kubectl --context kind-{{ usage.name }} apply -f -
+
+if kubectl --context kind-{{ usage.name }} -n {{ usage.namespace }} get secret {{ usage.secret }} >/dev/null 2>&1; then
+  printf 'Secret %s/%s already exists; leaving it unchanged\n' '{{ usage.namespace }}' '{{ usage.secret }}'
+  exit 0
+fi
+
+password="$(openssl rand -base64 32)"
+kubectl --context kind-{{ usage.name }} -n {{ usage.namespace }} create secret generic {{ usage.secret }} \
+  --from-literal=password="$password" \
+  --dry-run=client -o yaml | kubectl --context kind-{{ usage.name }} apply -f -
+'''
+
+[tasks."grafana-postgresql:status"]
+description = "Show Grafana PostgreSQL workload, storage, and Service status"
+usage = '''
+flag "--name <name>" help="kind cluster name" default="k8s-playground"
+flag "--namespace <namespace>" help="PostgreSQL namespace" default="observability"
+'''
+run = '''
+kubectl --context kind-{{ usage.name }} -n {{ usage.namespace }} get statefulset,pods,service,persistentvolumeclaim -l app.kubernetes.io/instance=grafana-postgresql -o wide
 '''
 
 [tasks."grafana:admin-password"]
