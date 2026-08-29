@@ -272,6 +272,8 @@ postgresql:
 
   volumePermissions:
     enabled: false
+    image:
+      digest: sha256:52f04d8e29dc3d77929fca8d75890c4cabe6182f650e0e921057a744559a9736
 
   metrics:
     enabled: false

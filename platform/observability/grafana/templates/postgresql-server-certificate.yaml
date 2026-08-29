@@ -19,6 +19,7 @@ spec:
     - grafana-postgresql.observability.svc.cluster.local
   usages:
     - server auth
+    - client auth
   issuerRef:
     name: local-ca
     kind: ClusterIssuer

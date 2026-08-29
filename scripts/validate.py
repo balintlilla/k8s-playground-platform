@@ -1432,6 +1432,12 @@ def validate_grafana_postgresql(case: unittest.TestCase, docs: list[dict[str, An
     certificate = resource(case, docs, "Certificate", "grafana-postgresql")
     pod_spec = dig(statefulset, "spec", "template", "spec")
     container = named(case, dig(pod_spec, "containers"), "postgresql", "PostgreSQL container is missing")
+    copy_certificates = named(
+        case,
+        dig(pod_spec, "initContainers"),
+        "copy-certs",
+        "PostgreSQL certificate initialization is missing",
+    )
     password_volume = named(
         case,
         dig(pod_spec, "volumes"),
@@ -1464,6 +1470,11 @@ def validate_grafana_postgresql(case: unittest.TestCase, docs: list[dict[str, An
         container.get("image"),
         "registry-1.docker.io/bitnami/postgresql@sha256:40a261ed77f3b8dc65eeeec98bb79c4d3ef3410d7e2af7cfcf3785a6af00e4c5",
         "PostgreSQL image must use the pinned digest",
+    )
+    case.assertEqual(
+        copy_certificates.get("image"),
+        "registry-1.docker.io/bitnami/os-shell@sha256:52f04d8e29dc3d77929fca8d75890c4cabe6182f650e0e921057a744559a9736",
+        "PostgreSQL certificate initialization image must use the pinned digest",
     )
     case.assertTrue(
         dig(container, "securityContext", "runAsUser") == 1001
@@ -1511,7 +1522,7 @@ def validate_grafana_postgresql(case: unittest.TestCase, docs: list[dict[str, An
     case.assertTrue(
         dig(certificate, "spec", "secretName") == "grafana-postgresql-tls"
         and "grafana-postgresql.observability.svc.cluster.local" in dig(certificate, "spec", "dnsNames")
-        and dig(certificate, "spec", "usages") == ["server auth"]
+        and dig(certificate, "spec", "usages") == ["server auth", "client auth"]
         and dig(certificate, "spec", "privateKey", "rotationPolicy") == "Always",
         "PostgreSQL server certificate rotation is not configured",
     )
