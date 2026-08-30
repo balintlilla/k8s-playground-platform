@@ -56,7 +56,7 @@ If the PEP 723 dependency metadata changes, refresh and commit its lock with `uv
 
 ## Repo Responsibilities
 
-This repo owns Kubernetes desired state and bootstrap/local support configuration.
+This repo owns Kubernetes desired state, bootstrap/local support configuration, and Terraform or OpenTofu cloud infrastructure. Keep provider infrastructure in a dedicated top-level area instead of mixing it into `platform/`.
 
 The `../k8s-playground-argocd-apps` repo owns Argo CD `Application` wiring: which component is installed for a cluster, sync waves, destination namespace, sync policy, and source path.
 
