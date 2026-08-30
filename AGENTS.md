@@ -50,13 +50,15 @@ When changing a wrapper chart:
 
 Keep `mise.toml` as thin task orchestration. Platform contract tests live in the locked PEP 723 uv script `scripts/validate.py`; do not add inline Python, Ruby, or large shell assertions back to mise tasks.
 
+Do not run platform validation tasks for documentation-only changes. Review the documentation diff directly instead.
+
 Targeted `validate:*` tasks select one component from the same Python suite. Wrapper validation stages charts in `.validation/` and runs `helm dependency build` against committed `Chart.lock` files. Use `helm dependency update` only when intentionally refreshing a wrapper lock.
 
 If the PEP 723 dependency metadata changes, refresh and commit its lock with `uv lock --script scripts/validate.py`.
 
 ## Repo Responsibilities
 
-This repo owns Kubernetes desired state, bootstrap/local support configuration, and Terraform or OpenTofu cloud infrastructure. Keep provider infrastructure in a dedicated top-level area instead of mixing it into `platform/`.
+This repo owns Kubernetes desired state, bootstrap/local support configuration, and Terraform cloud infrastructure. Keep provider infrastructure in a dedicated top-level area instead of mixing it into `platform/`.
 
 The `../k8s-playground-argocd-apps` repo owns Argo CD `Application` wiring: which component is installed for a cluster, sync waves, destination namespace, sync policy, and source path.
 

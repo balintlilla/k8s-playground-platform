@@ -16,11 +16,21 @@ Consequences: Provider work must preserve kind validation and lifecycle behavior
 
 Status: Accepted.
 
-Decision: This repository owns Kubernetes resources, platform wrapper charts, local bootstrap support, and Terraform or OpenTofu cloud infrastructure. `k8s-playground-argocd-apps` owns Argo `Application` composition.
+Decision: This repository owns Kubernetes resources, platform wrapper charts, local bootstrap support, and Terraform cloud infrastructure. `k8s-playground-argocd-apps` owns Argo `Application` composition.
 
 Why: Platform configuration and the infrastructure that hosts it are parts of the same playground. Keeping both here supports one end-to-end lifecycle without adding another repository. Argo composition remains separate because it selects which desired state a cluster reconciles.
 
 Consequences: Do not store Argo `Application` definitions here. Keep provider IAM, networks, managed clusters, and other IaC in a dedicated top-level area rather than mixing them into `platform/`.
+
+## Terraform Is The IaC Engine
+
+Status: Accepted.
+
+Decision: Use Terraform directly for cloud infrastructure. Do not introduce OpenTofu or Terragrunt at this stage.
+
+Why: Terraform is the engine used by the official GCP documentation and has the broadest industry familiarity. The initial foundation and session roots do not need another orchestration layer, and mise can keep the Kubernetes and Argo lifecycle explicit.
+
+Consequences: Pin Terraform through mise, commit `.terraform.lock.hcl` for each root, and store foundation and disposable session state separately. Avoid Terraform-specific hosted services unless a later requirement justifies them. Reconsider Terragrunt only if repeated environments, many state roots, or a nontrivial dependency graph make direct Terraform orchestration hard to maintain. Adopting OpenTofu later requires a separate state and compatibility review.
 
 ## Argo Follows A Proven Bootstrap Path
 

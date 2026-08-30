@@ -11,7 +11,7 @@ This repository owns Kubernetes desired state, local bootstrap support, and prov
 - `clusters/kind/` contains the kind topology and kind-only MetalLB template.
 - `bootstrap/argocd/kind/` contains the resources needed before Argo CD can reconcile steady state.
 - `mise.toml` and `scripts/` contain local lifecycle, validation, and recovery workflows.
-- Future Terraform or OpenTofu configuration will manage cloud clusters, IAM, networking, DNS, and provider services from a dedicated top-level area in this repository.
+- Future Terraform configuration will manage cloud clusters, IAM, networking, DNS, and provider services from a dedicated top-level area in this repository.
 
 The adjacent [`k8s-playground-argocd-apps`](https://github.com/mblayman/k8s-playground-argocd-apps) repository owns Argo CD `Application` wiring. It selects components, source paths, destinations, projects, sync policies, and child-Application waves.
 

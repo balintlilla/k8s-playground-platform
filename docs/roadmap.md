@@ -69,7 +69,7 @@ The GCP work should progress in independently verifiable slices:
 | Phase | Outcome |
 | --- | --- |
 | Portability audit | Identify every kind-specific address, host path, credential, storage, DNS, certificate, and networking assumption |
-| Infrastructure foundation | Establish a dedicated Terraform or OpenTofu area in this repository and retain one low-cost project, API, billing, state, and optional DNS foundation |
+| Infrastructure foundation | Establish a dedicated Terraform area in this repository and retain one low-cost project, API, billing, state, and optional DNS foundation |
 | Cost safety | Establish low quotas, budget alerts, mandatory session labels, expiry metadata, and cleanup that runs outside the cluster |
 | Empty-cluster tracer | Create a zonal GKE Standard cluster, install Argo CD, validate the control path, and destroy all session resources |
 | Argo composition | Add `clusters/gcp` roots without changing the working `clusters/kind` roots or copying portable desired state wholesale |
@@ -81,6 +81,8 @@ The GCP work should progress in independently verifiable slices:
 | Cost measurement | Record creation time, teardown time, and billed cost, then update estimates from observed data |
 
 The first profile should use zonal GKE Standard. The current Istio CNI and Alloy node integration need node-level access, so Autopilot is not the initial target.
+
+Use Terraform directly with separate foundation and session roots. Keep lifecycle orchestration in mise rather than adding Terragrunt before the state graph requires it.
 
 Start with a small on-demand node pool for stable bring-up. Add a Spot profile after the regular lifecycle is reproducible. Do not buy committed-use discounts for an intermittent session cluster.
 

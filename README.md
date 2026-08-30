@@ -6,7 +6,7 @@ Kind is the implemented reference environment. The current platform includes Arg
 
 ## Repository Ownership
 
-This repository owns application and platform resources, wrapper charts, kind configuration, local lifecycle tasks, platform validation, and future Terraform or OpenTofu infrastructure code.
+This repository owns application and platform resources, wrapper charts, kind configuration, local lifecycle tasks, platform validation, and future Terraform infrastructure code.
 
 The adjacent [`k8s-playground-argocd-apps`](https://github.com/mblayman/k8s-playground-argocd-apps) repository owns Argo CD `Application` composition, including component selection, source paths, destinations, projects, sync policy, and child-Application waves.
 
