@@ -69,7 +69,7 @@ The GCP work should progress in independently verifiable slices:
 | Phase | Outcome |
 | --- | --- |
 | Portability audit | Identify every kind-specific address, host path, credential, storage, DNS, certificate, and networking assumption |
-| Infrastructure foundation | Establish a dedicated Terraform area in this repository and retain one low-cost project, API, billing, state, and optional DNS foundation |
+| Infrastructure foundation | Establish `infrastructure/gcp/` Terraform roots and retain one low-cost project, API, billing, state, and optional DNS foundation |
 | Cost safety | Establish low quotas, budget alerts, mandatory session labels, expiry metadata, and cleanup that runs outside the cluster |
 | Empty-cluster tracer | Create a zonal GKE Standard cluster, install Argo CD, validate the control path, and destroy all session resources |
 | Argo composition | Add `clusters/gcp` roots without changing the working `clusters/kind` roots or copying portable desired state wholesale |

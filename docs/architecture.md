@@ -8,10 +8,10 @@ This repository owns Kubernetes desired state, local bootstrap support, and prov
 
 - `apps/` contains application-owned resources.
 - `platform/` contains platform charts and manifests.
-- `clusters/kind/` contains the kind topology and kind-only MetalLB template.
+- `infrastructure/kind/` contains the kind topology and kind-only MetalLB template.
 - `bootstrap/argocd/kind/` contains the resources needed before Argo CD can reconcile steady state.
 - `mise.toml` and `scripts/` contain local lifecycle, validation, and recovery workflows.
-- Future Terraform configuration will manage cloud clusters, IAM, networking, DNS, and provider services from a dedicated top-level area in this repository.
+- Future Terraform configuration under `infrastructure/<provider>/` will manage cloud clusters, IAM, networking, DNS, and provider services.
 
 The adjacent [`k8s-playground-argocd-apps`](https://github.com/mblayman/k8s-playground-argocd-apps) repository owns Argo CD `Application` wiring. It selects components, source paths, destinations, projects, sync policies, and child-Application waves.
 
@@ -21,7 +21,7 @@ Provider infrastructure code will remain separate from Kubernetes desired state 
 
 ## Kind Reference Cluster
 
-[`clusters/kind/cluster.yaml`](../clusters/kind/cluster.yaml) creates one control-plane node and two worker nodes. The cluster uses kind's default CNI. Istio CNI configures mesh traffic redirection but does not replace the cluster CNI.
+[`infrastructure/kind/cluster.yaml`](../infrastructure/kind/cluster.yaml) creates one control-plane node and two worker nodes. The cluster uses kind's default CNI. Istio CNI configures mesh traffic redirection but does not replace the cluster CNI.
 
 MetalLB supplies kind `LoadBalancer` addresses in layer 2 mode. [`scripts/render-metallb-kind-config.sh`](../scripts/render-metallb-kind-config.sh) derives the address pool from the live Docker `kind` network. MetalLB remains outside Argo because the host Docker subnet is runtime state that Argo cannot discover safely.
 

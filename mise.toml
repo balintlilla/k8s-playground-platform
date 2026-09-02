@@ -138,7 +138,7 @@ run = "uv run --locked --script scripts/validate.py"
 description = "Create the kind cluster and bootstrap current platform"
 usage = '''
 flag "--name <name>" help="kind cluster name" default="k8s-playground"
-flag "--config <config>" help="kind cluster config path" default="clusters/kind/cluster.yaml"
+flag "--config <config>" help="kind cluster config path" default="infrastructure/kind/cluster.yaml"
 flag "--metallb-version <metallb-version>" help="MetalLB version" default="v0.14.9"
 flag "--network <network>" help="Docker network used by kind" default="kind"
 flag "--metallb-namespace <metallb-namespace>" help="MetalLB namespace" default="metallb-system"
@@ -958,7 +958,7 @@ kubectl --context kind-{{ usage.name }} -n istio-system get service/istio-ingres
 description = "Create the local kind cluster"
 usage = '''
 flag "--name <name>" help="kind cluster name" default="k8s-playground"
-flag "--config <config>" help="kind cluster config path" default="clusters/kind/cluster.yaml"
+flag "--config <config>" help="kind cluster config path" default="infrastructure/kind/cluster.yaml"
 '''
 run = "kind create cluster --name {{ usage.name }} --config {{ usage.config }}"
 

@@ -20,7 +20,7 @@ Decision: This repository owns Kubernetes resources, platform wrapper charts, lo
 
 Why: Platform configuration and the infrastructure that hosts it are parts of the same playground. Keeping both here supports one end-to-end lifecycle without adding another repository. Argo composition remains separate because it selects which desired state a cluster reconciles.
 
-Consequences: Do not store Argo `Application` definitions here. Keep provider IAM, networks, managed clusters, and other IaC in a dedicated top-level area rather than mixing them into `platform/`.
+Consequences: Do not store Argo `Application` definitions here. Keep cluster and provider infrastructure under `infrastructure/` rather than mixing it into `platform/`.
 
 ## Terraform Is The IaC Engine
 
